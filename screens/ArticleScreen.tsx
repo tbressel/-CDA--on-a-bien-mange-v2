@@ -1,11 +1,25 @@
+// react imports
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList } from 'react-native';
+
+// database imports
 import { getAllAliments } from '../database/database';
+
+// style import
 import { articleStyle } from '../styles/ArticleStyle';
 
+
+
+
 export default function ArticleScreen() {
+
+  // states
   const [articles, setArticles] = useState<{ id: number; nom: string; barcode: string }[]>([]);
 
+
+  /**
+   * get all articles from database
+   */
   useEffect(() => {
     const fetchArticles = async () => {
       const data = await getAllAliments() as { id: number; nom: string; barcode: string }[];
@@ -13,6 +27,8 @@ export default function ArticleScreen() {
     };
     fetchArticles();
   }, []);
+
+
 
   return (
     <View style={articleStyle.container}>
@@ -30,4 +46,3 @@ export default function ArticleScreen() {
     </View>
   );
 }
-

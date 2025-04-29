@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, ImageBackground } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { addToHistory, initDatabase, seedDatabase, searchByName, searchByBarcode } from '../database/database';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { clearHistory } from '../database/database';
+import { addToHistory, initDatabase } from '../database/database';
+import { searchByName, searchByBarcode } from '../services/searchService';
+import { clearHistory, getHistory } from '../database/database';
 import { homeStyle } from '../styles/HomeStyle';
-import { getHistory } from '../database/database'; 
-
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -16,28 +15,29 @@ export default function HomeScreen() {
   const hasScanned = useRef(false);
   const [history, setHistory] = useState<{ type: string, value: string, barcode: string }[]>([]);
 
-
-
   useEffect(() => {
     initDatabase();
-    seedDatabase();
     loadHistory();
   }, []);
 
-
   const loadHistory = async () => {
     const allHistory: { type: string; query: string, barcode: string }[] = await getHistory();
-    const lastFive = allHistory.slice(0, 5).map(item => ({ type: item.type, value: item.query, barcode: item.barcode })); 
+    const lastFive = allHistory.slice(0, 5).map(item => ({
+      type: item.type,
+      value: item.query,
+      barcode: item.barcode
+    }));
     setHistory(lastFive);
   };
-  
 
   const handleSearch = async () => {
     const result = await searchByName(text);
-    addToHistory('name', text);
-    result.length > 0
-      ? navigation.navigate('Result', { data: result[0] })
-      : alert('Aucun résultat trouvé.');
+    addToHistory('name', text);  // Enregistrer dans l'historique
+    if (result.length > 0) {
+      navigation.navigate('Result', { data: result[0] });
+    } else {
+      alert('Aucun résultat trouvé.');
+    }
   };
 
   const handleBarCodeScanned = async ({ data }: { data: string }) => {
@@ -45,11 +45,15 @@ export default function HomeScreen() {
     hasScanned.current = true;
     setScanning(false);
     const result = await searchByBarcode(data);
-    addToHistory('barcode', data);
-    result.length > 0
-      ? navigation.navigate('Result', { data: result[0] })
-      : alert('Aucun résultat pour ce code-barres.');
+    addToHistory('barcode', data);  // Enregistrer dans l'historique
+    if (result.length > 0) {
+      navigation.navigate('Result', { data: result[0] });
+    } else {
+      alert('Aucun résultat pour ce code-barres.');
+    }
   };
+
+  
 
   const startScanning = async () => {
     const permission = await requestPermission();
@@ -96,30 +100,29 @@ export default function HomeScreen() {
           </View>
 
           <View style={{ marginTop: 20 }}>
-  {history.map((item, index) => (
-       <TouchableOpacity
-          key={index}
-          style={homeStyle.historyItem}
-          onPress={async () => {
-            const result = item.type === 'name'
-              ? await searchByName(item.value)
-              : await searchByBarcode(item.value);
+            {history.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={homeStyle.historyItem}
+                onPress={async () => {
+                  const result = item.type === 'name'
+                    ? await searchByName(item.value)
+                    : await searchByBarcode(item.barcode);
 
-    
-            result.length > 0
-              ? navigation.navigate('Result', { data: result[0] })
-              : alert("Aucun résultat trouvé.");
-          }}>
-          <Text style={homeStyle.historyText}>
-            {item.type === 'name' 
-              ? `🔍 ${item.value}` 
-              : `📷 ${item.value}`}
-          </Text>
-        </TouchableOpacity>
-  ))}
-</View>
-
-
+                  if (result.length > 0) {
+                    navigation.navigate('Result', { data: result[0] });
+                  } else {
+                    alert("Aucun résultat trouvé.");
+                  }
+                }}>
+                <Text style={homeStyle.historyText}>
+                  {item.type === 'name'
+                    ? `🔍 ${item.value}`
+                    : `📷 ${item.barcode}`}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
           {/* VUE DE SCAN */}
           {scanning && hasPermission?.granted && (
@@ -140,5 +143,4 @@ export default function HomeScreen() {
       </View>
     </ImageBackground>
   );
-
 }
